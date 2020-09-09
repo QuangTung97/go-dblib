@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -10,77 +11,103 @@ import (
 )
 
 var queryMut sync.Mutex
-var querySet = make(map[string]struct{})
+var queries = make(map[string]string)
 
 var namedQueryMut sync.Mutex
-var namedQuerySet = make(map[string]struct{})
+var namedQueries = make(map[string]string)
 
+// NewQuery register a query for DB checking
 func NewQuery(query string) string {
 	query = strings.TrimSpace(query)
 
 	queryMut.Lock()
 	defer queryMut.Unlock()
 
-	_, existed := querySet[query]
+	_, existed := queries[query]
 	if existed {
 		panic("must use NewQuery for global variables")
 	}
-	querySet[query] = struct{}{}
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		panic("runtime.Caller failed")
+	}
+	queries[query] = fmt.Sprintf("%s:%d", file, line)
 
 	return query
 }
 
+// NewNamedQuery register a named query (SQLX) for DB checking
 func NewNamedQuery(query string) string {
 	query = strings.TrimSpace(query)
 
 	namedQueryMut.Lock()
 	defer namedQueryMut.Unlock()
 
-	_, existed := namedQuerySet[query]
+	_, existed := namedQueries[query]
 	if existed {
 		panic("must use NewNamedQuery for global variables")
 	}
-	namedQuerySet[query] = struct{}{}
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		panic("runtime.Caller failed")
+	}
+	namedQueries[query] = fmt.Sprintf("%s:%d", file, line)
 
 	return query
 }
 
-func checkNormalQueries(db *sqlx.DB) {
+func checkNormalQueries(db *sqlx.DB, msg string) string {
 	queryMut.Lock()
 	defer queryMut.Unlock()
 
-	for query := range querySet {
+	for query, line := range queries {
 		stmt, err := db.Preparex(query)
 		if err != nil {
-			msg := fmt.Sprintf(`
+			msg += fmt.Sprintf(`
 =============================================================
 %s
-=============================================================
-%v`, query, err)
-			panic(msg)
+-------------------------------------------------------------
+%s
+-------------------------------------------------------------
+%v
+`, line, query, err)
+			continue
 		}
 		_ = stmt.Close()
 	}
+	return msg
 }
 
-func checkNamedQueries(db *sqlx.DB) {
-	for query := range namedQuerySet {
+func checkNamedQueries(db *sqlx.DB, msg string) string {
+	for query, line := range namedQueries {
 		stmt, err := db.PrepareNamed(query)
 		if err != nil {
-			msg := fmt.Sprintf(`
+			msg += fmt.Sprintf(`
 =============================================================
 %s
-=============================================================
-%v`, query, err)
-			panic(msg)
+-------------------------------------------------------------
+%s
+-------------------------------------------------------------
+%v
+`, line, query, err)
+			continue
 		}
 		_ = stmt.Close()
 	}
+	return msg
 }
 
+// CheckRegisteredQueries uses perpared statements to check
+// syntax and semantic
 func CheckRegisteredQueries(db *sqlx.DB) {
-	checkNormalQueries(db)
-	checkNamedQueries(db)
+	msg := ""
+	msg = checkNormalQueries(db, msg)
+	msg = checkNamedQueries(db, msg)
+	if msg != "" {
+		msg += `
+=============================================================`
+		panic(msg)
+	}
 }
 
 var simpleQuery string = NewQuery(`
@@ -97,7 +124,7 @@ INSERT INTO counter(id, value) VALUES(:id, :value)
 `)
 
 func main() {
-	db := sqlx.MustConnect("mysql", "root:tung@/bench")
+	db := sqlx.MustConnect("mysql", "root:1@/bench")
 	CheckRegisteredQueries(db)
 
 	v := struct {
