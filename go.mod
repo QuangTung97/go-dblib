@@ -1,4 +1,4 @@
-module dblib
+module github.com/QuangTung97/go-dblib
 
 go 1.14
 

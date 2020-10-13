@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dblib"
+	"github.com/QuangTung97/go-dblib"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
