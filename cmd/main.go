@@ -10,24 +10,24 @@ import (
 const primaryDB = 1
 const secondaryDB = 2
 
-var simpleQuery string = dblib.NewQuery(primaryDB, `
+var simpleQuery string = dblib.NewQuery(primaryDB, 0, `
 INSERT INTO counter(id, value) VALU (?, ?)
 `)
 
-var selectQuery string = dblib.NewQuery(primaryDB, `
+var selectQuery string = dblib.NewQuery(primaryDB, 0, `
 SELECT id, value FROM counter
 `)
 
-var copyQuery string = dblib.NewQuery(primaryDB, `
+var copyQuery string = dblib.NewQuery(primaryDB, 0, `
 INSERT INTO counter(tung, valu)
 SELECT id, value FROM counter
 `)
 
-var someNamedQuery string = dblib.NewNamedQuery(primaryDB, `
+var someNamedQuery string = dblib.NewNamedQuery(primaryDB, 0, `
 INSERT INTO counter(id, value) VALUES(:id, :value)
 `)
 
-var anotherQuery string = dblib.NewQuery(secondaryDB, `
+var anotherQuery string = dblib.NewQuery(secondaryDB, 0, `
 INSERT INTO tung(id, name) VALUES (1, 2)
 `)
 

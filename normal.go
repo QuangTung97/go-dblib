@@ -9,7 +9,7 @@ import (
 )
 
 // NewQuery register a query for DB checking
-func NewQuery(dbNum int, query string) string {
+func NewQuery(dbNum int, callerSkip int, query string) string {
 	query = strings.TrimSpace(query)
 
 	normalQueryMut.Lock()
@@ -24,7 +24,7 @@ func NewQuery(dbNum int, query string) string {
 	if existed {
 		panic("must use NewQuery for global variables")
 	}
-	_, file, line, ok := runtime.Caller(1)
+	_, file, line, ok := runtime.Caller(1 + callerSkip)
 	if !ok {
 		panic("runtime.Caller failed")
 	}

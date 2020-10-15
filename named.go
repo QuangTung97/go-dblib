@@ -9,7 +9,7 @@ import (
 )
 
 // NewNamedQuery register a named query (SQLX) for DB checking
-func NewNamedQuery(dbNum int, query string) string {
+func NewNamedQuery(dbNum int, callerSkip int, query string) string {
 	query = strings.TrimSpace(query)
 
 	namedQueryMut.Lock()
@@ -24,7 +24,7 @@ func NewNamedQuery(dbNum int, query string) string {
 	if existed {
 		panic("must use NewNamedQuery for global variables")
 	}
-	_, file, line, ok := runtime.Caller(1)
+	_, file, line, ok := runtime.Caller(1 + callerSkip)
 	if !ok {
 		panic("runtime.Caller failed")
 	}
